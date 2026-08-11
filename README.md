@@ -1,1 +1,1 @@
-# nakivo-job-processing-service
+# job-processing-service

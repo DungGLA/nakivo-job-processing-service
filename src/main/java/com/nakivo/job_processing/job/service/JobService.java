@@ -12,7 +12,10 @@ import com.nakivo.job_processing.job.repository.JobRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.SQLOutput;
 import java.time.Instant;
 import java.util.List;
 
@@ -65,6 +68,20 @@ public class JobService {
             response.setErrorMessage(job.getErrorMessage());
             return response;
         }).toList();
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int claimJobs() {
+        List<Job> jobs = jobRepository.getJobsByStatusForUpdate(JobStatus.PENDING.name(), 5);
+
+        if (!jobs.isEmpty()) {
+            jobRepository.updateBatchJobStatusById(
+                    jobs.stream().map(Job::getId).toList(),
+                    JobStatus.PROCESSING,
+                    Instant.now());
+        }
+
+        return jobs.size();
     }
 
     private JsonNode getPayload(String payload) {

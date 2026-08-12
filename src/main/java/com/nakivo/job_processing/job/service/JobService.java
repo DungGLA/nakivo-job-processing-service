@@ -11,6 +11,7 @@ import com.nakivo.job_processing.job.entity.Job;
 import com.nakivo.job_processing.job.enumeric.JobStatus;
 import com.nakivo.job_processing.job.repository.JobRepository;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ import java.util.List;
 
 @Service
 @AllArgsConstructor
+@Slf4j
 public class JobService {
 
     private final JobRepository jobRepository;
@@ -67,7 +69,7 @@ public class JobService {
                     JobStatus.PROCESSING,
                     Instant.now());
 
-            System.out.println("Claimed " + jobs.size() + " jobs for processing.");
+            log.info("Claimed jobs:" + jobIds + " for processing.");
         }
 
         return jobIds;

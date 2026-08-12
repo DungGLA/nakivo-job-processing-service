@@ -9,6 +9,7 @@ import com.nakivo.job_processing.job.service.JobService;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,6 +38,7 @@ public class JobController {
     }
 
     @PostMapping("/process")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void processJob() {
         jobProcessService.processJob();
     }

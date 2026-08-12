@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.SQLOutput;
 import java.time.Instant;
 import java.util.List;
 
@@ -71,20 +70,24 @@ public class JobService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public int claimJobs() {
+    public List<Long> claimJobs() {
         List<Job> jobs = jobRepository.getJobsByStatusForUpdate(JobStatus.PENDING.name(), 5);
 
-        if (!jobs.isEmpty()) {
+        List<Long> jobIds = jobs.stream().map(Job::getId).toList();
+        if (!jobIds.isEmpty()) {
+
             jobRepository.updateBatchJobStatusById(
-                    jobs.stream().map(Job::getId).toList(),
+                    jobIds,
                     JobStatus.PROCESSING,
                     Instant.now());
+
+            System.out.println("Claimed " + jobs.size() + " jobs for processing.");
         }
 
-        return jobs.size();
+        return jobIds;
     }
 
-    private JsonNode getPayload(String payload) {
+    public JsonNode getPayload(String payload) {
         try {
             return objectMapper.readTree(payload);
         } catch (JsonProcessingException e) {

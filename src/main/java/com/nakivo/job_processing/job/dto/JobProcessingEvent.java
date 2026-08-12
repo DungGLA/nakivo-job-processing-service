@@ -3,6 +3,6 @@ package com.nakivo.job_processing.job.dto;
 import lombok.Data;
 
 @Data
-public class CreatedJobResponse {
-    private Long id;
+public class JobProcessingEvent {
+    private Long jobId;
 }

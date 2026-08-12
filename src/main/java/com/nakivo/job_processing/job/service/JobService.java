@@ -1,8 +1,9 @@
 package com.nakivo.job_processing.job.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nakivo.job_processing.common.exception.JobNotFoundException;
+import com.nakivo.job_processing.common.helper.PageResponseMapper;
+import com.nakivo.job_processing.common.response.PageResponse;
+import com.nakivo.job_processing.job.converter.JobConverter;
 import com.nakivo.job_processing.job.dto.CreatedJobResponse;
 import com.nakivo.job_processing.job.dto.JobDetailResponse;
 import com.nakivo.job_processing.job.dto.JobRequest;
@@ -10,6 +11,7 @@ import com.nakivo.job_processing.job.entity.Job;
 import com.nakivo.job_processing.job.enumeric.JobStatus;
 import com.nakivo.job_processing.job.repository.JobRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -24,7 +26,7 @@ public class JobService {
 
     private final JobRepository jobRepository;
 
-    private final ObjectMapper objectMapper;
+    private final JobConverter jobConverter;
 
     public CreatedJobResponse createJob(JobRequest request) {
         Job job = Job.builder()
@@ -35,43 +37,27 @@ public class JobService {
                 .build();
         jobRepository.save(job);
 
-        CreatedJobResponse response = new CreatedJobResponse();
-        response.setId(job.getId());
-        return response;
+        return CreatedJobResponse.builder().jobId(job.getId()).build();
     }
 
     public JobDetailResponse getJobById(Long id) {
         Job job = jobRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Job not found with id: " + id));
+                .orElseThrow(() -> new JobNotFoundException("Can not find job with the given ID: " + id));
 
-        JobDetailResponse response = new JobDetailResponse();
-        response.setId(job.getId());
-        response.setType(job.getType());
-        response.setStatus(job.getStatus());
-        response.setPayload(getPayload(job.getPayload()));
-        response.setRetryCount(job.getRetryCount());
-        response.setErrorMessage(job.getErrorMessage());
-
-        return response;
+        return jobConverter.toResource(job);
     }
 
-    public List<JobDetailResponse> getJobs(JobStatus status, Pageable pageable) {
-        List<Job> jobs = jobRepository.findByStatusOrderByCreatedAtAsc(status, pageable).getContent();
-        return jobs.stream().map(job -> {
-            JobDetailResponse response = new JobDetailResponse();
-            response.setId(job.getId());
-            response.setType(job.getType());
-            response.setStatus(job.getStatus());
-            response.setPayload(getPayload(job.getPayload()));
-            response.setRetryCount(job.getRetryCount());
-            response.setErrorMessage(job.getErrorMessage());
-            return response;
-        }).toList();
+    public PageResponse<JobDetailResponse> getJobs(String statusRequest, Pageable pageable) {
+        JobStatus status = JobStatus.from(statusRequest);
+        Page<JobDetailResponse> page = jobRepository.findByStatusOrderByCreatedAtAsc(status, pageable)
+                .map(jobConverter::toResource);
+
+        return PageResponseMapper.from(page);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public List<Long> claimJobs() {
-        List<Job> jobs = jobRepository.getJobsByStatusForUpdate(JobStatus.PENDING.name(), 5);
+    public List<Long> processJobByBatch(int batchSize) {
+        List<Job> jobs = jobRepository.getJobsByStatusForUpdate(JobStatus.PENDING.name(), batchSize);
 
         List<Long> jobIds = jobs.stream().map(Job::getId).toList();
         if (!jobIds.isEmpty()) {
@@ -85,13 +71,5 @@ public class JobService {
         }
 
         return jobIds;
-    }
-
-    public JsonNode getPayload(String payload) {
-        try {
-            return objectMapper.readTree(payload);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Invalid job payload", e);
-        }
     }
 }

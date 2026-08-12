@@ -21,7 +21,7 @@ public class JobProcessingListener {
         try {
             jobProcessService.handleProcessingJobById(jobId);
         } catch (Exception e) {
-            log.error("Failed to process job {}", jobId, e);
+            log.error("[JobProcessingListener] Failed to process job {}", jobId, e);
         }
     }
 }

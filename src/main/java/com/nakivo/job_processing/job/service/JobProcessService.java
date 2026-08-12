@@ -1,6 +1,8 @@
 package com.nakivo.job_processing.job.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.nakivo.job_processing.common.exception.JobNotFoundException;
+import com.nakivo.job_processing.common.helper.JsonNodeConverter;
 import com.nakivo.job_processing.job.entity.Job;
 import com.nakivo.job_processing.job.enumeric.JobStatus;
 import com.nakivo.job_processing.job.repository.JobRepository;
@@ -24,10 +26,12 @@ public class JobProcessService {
 
     private final ApplicationEventPublisher eventPublisher;
 
+    private final JsonNodeConverter jsonNodeConverter;
+
     public void processJob() {
         boolean hasProcessingJobs;
         do {
-            List<Long> jobIds = jobService.claimJobs();
+            List<Long> jobIds = jobService.processJobByBatch(5);
             hasProcessingJobs = !jobIds.isEmpty();
 
             if (hasProcessingJobs) {
@@ -40,7 +44,7 @@ public class JobProcessService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleProcessingJobById(Long jobId) {
         Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found with id: " + jobId));
+                .orElseThrow(() -> new JobNotFoundException("Can not find job with the given ID: " + jobId));
         job.setUpdatedAt(Instant.now());
 
         if (isFailedJob(job)) {
@@ -64,7 +68,7 @@ public class JobProcessService {
     }
 
     private boolean isFailedJob(Job job) {
-        JsonNode payload = jobService.getPayload(job.getPayload());
+        JsonNode payload = jsonNodeConverter.convertStringToJsonNode(job.getPayload());
         return payload.path("fail").asBoolean(false);
     }
 

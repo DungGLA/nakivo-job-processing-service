@@ -16,13 +16,6 @@ import java.util.List;
 public interface JobRepository extends JpaRepository<Job, Long> {
     Page<Job> findByStatusOrderByCreatedAtAsc(JobStatus status, Pageable pageable);
 
-//    @Modifying
-//    @Query("UPDATE Job j SET j.status = 'PROCESSING', " +
-//            "j.updatedAt = :updatedAt " +
-//            "WHERE j.status = 'PENDING'")
-//    int updatePendingStatus(Instant updatedAt);
-
-
     @Query(value = """
         SELECT *
         FROM job

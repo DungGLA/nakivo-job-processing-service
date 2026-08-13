@@ -59,6 +59,7 @@ public class JobService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public List<Long> processJobByBatch(int batchSize) {
+        System.out.println("Fetching jobs with status PENDING for processing..." + Instant.now());
         List<Job> jobs = jobRepository.getJobsByStatusForUpdate(JobStatus.PENDING.name(), batchSize);
 
         List<Long> jobIds = jobs.stream().map(Job::getId).toList();

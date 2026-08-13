@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Objects;
 
 @Service
 @AllArgsConstructor
@@ -74,24 +73,6 @@ public class JobProcessService {
 
         return JobProcessResult.RETRY;
     }
-
-//    private void handleFailedJob(Job job) {
-//        if (Objects.isNull(job)) return;
-//
-//        int retryCount = job.getRetryCount() + 1;
-//        job.setRetryCount(retryCount);
-//
-//        log.info("Retrying job {} (attempt {}/{})", job.getId(), retryCount, MAX_RETRY_COUNT);
-//
-//        if (retryCount < MAX_RETRY_COUNT) {
-//            log.info("Job {} failed. publish event retry count: {})", job.getId(), retryCount);
-//            eventPublisher.publishEvent(job.getId());
-//            return;
-//        }
-//
-//        job.setStatus(JobStatus.FAILED);
-//        job.setErrorMessage("Job failed after 3 retries.");
-//    }
 
     private boolean isFailedJob(Job job) {
         JsonNode payload = jsonNodeConverter.convertStringToJsonNode(job.getPayload());

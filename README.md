@@ -335,12 +335,18 @@ Suppose this service needs to support 1 million jobs per day and multiple applic
 In your answer, please explain the proposed architecture, data flow, failure handling, duplicate processing prevention, scaling approach, and operational considerations.
 
 ## Approach
-- To support 1 million jobs per day and multiple application instances, I would enhance my current design as follows:
+- To support 1 million jobs per day (~12 jobs/s) and multiple application instances, I would enhance my current design as follows:
   + Using Kafka instead of in-memory event publishing to handle high throughput and provide durability and don't need to manage the thread pool size
-    or queue capacity. Support retry for better error handling event.
+    or queue capacity like using @Async. 
+    - Scale consumers horizontally based on Kafka lag.
+    - Support retry for better error handling event.
+    - Allow multiple consumers to process jobs in parallel.
   + Using outbox pattern to make sure event message doesn't lost in case of application crash, instead of publish event after commit transaction like current design.
   + Add composite index in the job table for any api need to select job data to improve query performance in case the data increase day by day.
-  + Config rate limiting at the API gateway layer to prevent too many requests from overwhelming the system. Especially for API create and process jobs.
+  + Add API rate limiting:
+    - Configure rate limits at the API Gateway.
+    - Protect create/process APIs from excessive traffic and prevent
+      downstream resource exhaustion.
   + The consumer should be had a retry mechanism with exponential backoff to handle transient failures. If a job fails after the maximum number of retries, it should be moved to a dead-letter queue for further investigation.
   + Expose a background job to handle the PROCESSING jobs (updated_at < now() - 5 minutes) in case consumer reach max retry and send to dlq.
   + Setup Kafka monitor to check lag, throughput and DB monitor to check CPU, memory, connection pool,...
@@ -439,14 +445,15 @@ LIMIT 20 OFFSET 0;
 - Case 2: Only this endpoint is slow => focus on its specific business flow of the API.
   + Check tracing log (like OpenTelemetry) to break down the response time and identify which span is actually slow.
   + If the database query step takes slow: (Assume using Postgres)
-    - Run EXPLAIN ANALYZE with BUFFERS and check whether PostgreSQL is doing a sequential scan, how many rows it scans versus returns, whether there is an expensive sort.
-    - If it is sequential scan => create an composite index (status, created_at DESC) to support the query. (Trace off: This will speed up the query but will slow down inserts and updates.)
+    - Run EXPLAIN ANALYZE to check whether PostgresSQL is doing a sequential scan, how many rows it scans versus returns, whether there is an expensive sort.
+    - If it is sequential scan => create an composite index (status, created_at DESC) to support the query. 
+    ```(Trace off: This will speed up the query but will slow down inserts and updates.)```
     - If the index is already used but the query is still slow => investigate whether table or index bloat is causing excessive page reads. 
 Jobs table is frequently updated from PENDING to PROCESSING to COMPLETED or FAILED, PostgreSQL can accumulate dead tuples due to MVCC. 
 Check pg_stat_user_tables for dead tuples and autovacuum activity, and check table and index sizes. 
 Then, also verify whether autovacuum is keeping up with the update rate. 
 If vacuum is not keeping up, investigate and consider update autovacuum for this table. For example using a lower vacuum scale factor or threshold.
-(Trace-off: This will increase the frequency of vacuuming, which can impact performance during vacuum runs, but will reduce bloat and improve query performance.)
+```(Trace-off: This will increase the frequency of vacuuming, which can impact performance during vacuum runs, but will reduce bloat and improve query performance.)```
 
 
 

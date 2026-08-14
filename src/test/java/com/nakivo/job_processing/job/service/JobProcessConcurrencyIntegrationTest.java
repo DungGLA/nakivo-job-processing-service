@@ -73,15 +73,12 @@ class JobProcessConcurrencyIntegrationTest {
 
             // Then
             assertThat(batch1).hasSize(5).doesNotContainAnyElementsOf(batch2);
-
             assertThat(batch2).hasSize(5);
 
             List<Long> allClaimedJobIds = Stream.concat(batch1.stream(), batch2.stream()).toList();
-
             assertThat(allClaimedJobIds).hasSize(10).doesNotHaveDuplicates();
 
             List<Job> jobs = jobRepository.findAll();
-
             assertThat(jobs).hasSize(10).allMatch(job -> job.getStatus() == JobStatus.PROCESSING);
 
         } finally {
@@ -90,7 +87,7 @@ class JobProcessConcurrencyIntegrationTest {
     }
 
     @Test
-    void givenFiveFailedFiveSuccess_whenJobProcess_thenHandleCompletedAndRetryFailedJobs () {
+    void givenFiveFailedAndFiveSuccessJob_whenJobProcess_thenHandleCompletedAndRetryFailedJobs () {
         // Given
         for (int i = 1; i <= 10; i++) {
             boolean failed = i % 2 != 0;
@@ -111,11 +108,9 @@ class JobProcessConcurrencyIntegrationTest {
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             // When
-            CompletableFuture<Void> future1 =
-                    CompletableFuture.runAsync(jobProcessService::processJob, executor);
+            CompletableFuture<Void> future1 = CompletableFuture.runAsync(jobProcessService::processJob, executor);
 
-            CompletableFuture<Void> future2 =
-                    CompletableFuture.runAsync(jobProcessService::processJob, executor);
+            CompletableFuture<Void> future2 = CompletableFuture.runAsync(jobProcessService::processJob, executor);
 
             CompletableFuture.allOf(future1, future2).join();
             Thread.sleep(1000);

@@ -401,7 +401,7 @@ Asynchronous Job Processing Flow
              ┌────────────┼────────────┐
              │            │            │
              ▼            ▼            ▼
-         Worker A      Worker B      Worker C
+         Consumer A   Consumer B   Consumer C
              │            │            │
              └────────────┼────────────┘
                           ▼
